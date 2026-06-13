@@ -1,0 +1,16 @@
+import express from 'express';
+import { getAllUsers, getUserById, updateUser, deactivateUser } from '../controllers/userController.js';
+import { protect, authorize } from '../middleware/auth.js';
+import upload from '../middleware/upload.js';
+
+const router = express.Router();
+
+/**
+ * User Routes (Admin Only)
+ */
+router.get('/', protect, authorize('admin'), getAllUsers);
+router.get('/:id', protect, getUserById);
+router.put('/:id', protect, upload.single('profileImage'), updateUser);
+router.put('/:id/deactivate', protect, authorize('admin'), deactivateUser);
+
+export default router;
