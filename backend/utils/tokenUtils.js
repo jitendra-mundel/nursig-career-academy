@@ -5,6 +5,16 @@ import jwt from 'jsonwebtoken';
  * Creates a token for authenticated user
  */
 export const generateToken = (user) => {
+  const secret = process.env.JWT_SECRET || 'dev_jwt_secret_fallback';
+  const expiresIn = process.env.JWT_EXPIRE || '7d';
+
+  if (!process.env.JWT_SECRET) {
+    // warn in logs when running without a configured secret (development only)
+    // In production you should set JWT_SECRET to a secure value.
+    // eslint-disable-next-line no-console
+    console.warn('Warning: JWT_SECRET is not set. Using insecure fallback secret. Set JWT_SECRET in env for production.');
+  }
+
   return jwt.sign(
     {
       id: user._id,
@@ -12,9 +22,9 @@ export const generateToken = (user) => {
       role: user.role,
       name: user.name,
     },
-    process.env.JWT_SECRET,
+    secret,
     {
-      expiresIn: process.env.JWT_EXPIRE,
+      expiresIn,
     }
   );
 };
