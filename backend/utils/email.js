@@ -44,14 +44,14 @@ export const sendOtpEmail = async (to, code) => {
     });
   };
 
-  let transporter = createTransporter();
+  let transporter = createTransporter(true); // try SSL first (port 465)
 
   try {
     await transporter.sendMail({ from, to, subject, text, html });
   } catch (error) {
     console.error('📧 Email send failed:', error.code || error.message);
-    if (error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED' || error.responseCode === 421) {
-      transporter = createTransporter(true);
+    if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT' || error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED' || error.responseCode === 421) {
+      transporter = createTransporter(false); // fallback to STARTTLS/587
       await transporter.sendMail({ from, to, subject, text, html });
     } else {
       throw error;
