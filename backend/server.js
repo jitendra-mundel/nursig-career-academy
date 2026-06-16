@@ -19,6 +19,7 @@ dotenv.config();
 
 // Initialize Express App
 const app = express();
+app.set('trust proxy', true);
 
 /**
  * Rate Limiting - Prevent abuse for 3000+ users
