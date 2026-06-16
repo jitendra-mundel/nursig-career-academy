@@ -25,10 +25,16 @@ export const sendOtpEmail = async (to, code) => {
 
   const createTransporter = (useSecure = Number(port) === 465) => {
     return nodemailer.createTransport({
+      service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
       host,
       port: Number(useSecure ? 465 : port),
       secure: useSecure,
       auth: { user, pass },
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 100,
+      family: 4,
+      requireTLS: !useSecure,
       tls: {
         rejectUnauthorized: false,
       },
