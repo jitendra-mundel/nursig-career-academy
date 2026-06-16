@@ -23,13 +23,34 @@ export const sendOtpEmail = async (to, code) => {
     throw error;
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port: Number(port),
-    secure: Number(port) === 465,
-    auth: { user, pass },
-  });
+  const createTransporter = (useSecure = Number(port) === 465) => {
+    return nodemailer.createTransport({
+      host,
+      port: Number(useSecure ? 465 : port),
+      secure: useSecure,
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+    });
+  };
 
-  await transporter.sendMail({ from, to, subject, text, html });
+  let transporter = createTransporter();
+
+  try {
+    await transporter.sendMail({ from, to, subject, text, html });
+  } catch (error) {
+    console.error('📧 Email send failed:', error.code || error.message);
+    if (error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED' || error.responseCode === 421) {
+      transporter = createTransporter(true);
+      await transporter.sendMail({ from, to, subject, text, html });
+    } else {
+      throw error;
+    }
+  }
+
   return true;
 };
