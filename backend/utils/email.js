@@ -23,7 +23,16 @@ export const sendOtpEmail = async (to, code) => {
     throw error;
   }
 
-  const createTransporter = (useSecure = Number(port) === 465) => {
+  // Helper to force IPv4/IPv6 lookup when needed
+  const lookupFactory = (family) => {
+    return (hostname, options, callback) => {
+      // family: 4, 6 or 0 (0 => system default)
+      if (!family || family === 0) return require('dns').lookup(hostname, options, callback);
+      return require('dns').lookup(hostname, { family }, callback);
+    };
+  };
+
+  const createTransporter = (useSecure = Number(port) === 465, family = 0) => {
     return nodemailer.createTransport({
       service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
       host,
@@ -33,30 +42,39 @@ export const sendOtpEmail = async (to, code) => {
       pool: true,
       maxConnections: 1,
       maxMessages: 100,
-      family: 4,
       requireTLS: !useSecure,
-      tls: {
-        rejectUnauthorized: false,
-      },
+      lookup: lookupFactory(family),
+      tls: { rejectUnauthorized: false },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 10000,
     });
   };
 
-  let transporter = createTransporter(true); // try SSL first (port 465)
+  // Try combinations: secure (465) then non-secure (STARTTLS/587), prefer IPv4, then IPv6, then default
+  const families = [4, 6, 0];
+  const secureOptions = [true, false];
 
-  try {
-    await transporter.sendMail({ from, to, subject, text, html });
-  } catch (error) {
-    console.error('📧 Email send failed:', error.code || error.message);
-    if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT' || error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED' || error.responseCode === 421) {
-      transporter = createTransporter(false); // fallback to STARTTLS/587
-      await transporter.sendMail({ from, to, subject, text, html });
-    } else {
-      throw error;
+  let lastError;
+  for (const secure of secureOptions) {
+    for (const family of families) {
+      const transporter = createTransporter(secure, family);
+      try {
+        // verify quickly to fail fast on auth/network
+        await transporter.verify();
+        await transporter.sendMail({ from, to, subject, text, html });
+        return true;
+      } catch (err) {
+        console.error(`📧 SMTP attempt failed (secure=${secure}, family=${family}):`, err.code || err.message);
+        lastError = err;
+        // continue to next attempt
+      }
     }
   }
+
+  // If reached here, all attempts failed
+  console.error('📧 All SMTP attempts failed', lastError && (lastError.code || lastError.message));
+  throw lastError || new Error('SMTP send failed');
 
   return true;
 };
