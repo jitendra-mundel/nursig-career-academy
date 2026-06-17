@@ -49,18 +49,37 @@ const NotesPage = () => {
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const backendBase = apiUrl.replace(/\/api\/?$/, '');
-      let resolvedPath = fileUrl;
+      let resolvedUrl = fileUrl;
 
-      if (!resolvedPath.startsWith('http')) {
-        if (resolvedPath.startsWith('/api/')) {
-          resolvedPath = resolvedPath.replace(/^\/api/, '');
+      if (resolvedUrl.startsWith('http')) {
+        try {
+          const parsed = new URL(resolvedUrl);
+          const backendOrigin = new URL(backendBase);
+
+          if (parsed.pathname.startsWith('/api/')) {
+            parsed.pathname = parsed.pathname.replace(/^\/api/, '');
+          }
+
+          if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+            parsed.protocol = backendOrigin.protocol;
+            parsed.hostname = backendOrigin.hostname;
+            parsed.port = backendOrigin.port;
+          }
+
+          resolvedUrl = parsed.toString();
+        } catch (e) {
+          // fallback to raw URL if parsing fails
         }
-        if (!resolvedPath.startsWith('/')) {
-          resolvedPath = `/${resolvedPath}`;
+      } else {
+        if (resolvedUrl.startsWith('/api/')) {
+          resolvedUrl = resolvedUrl.replace(/^\/api/, '');
         }
+        if (!resolvedUrl.startsWith('/')) {
+          resolvedUrl = `/${resolvedUrl}`;
+        }
+        resolvedUrl = `${backendBase}${resolvedUrl}`;
       }
 
-      const resolvedUrl = resolvedPath.startsWith('http') ? resolvedPath : `${backendBase}${resolvedPath}`;
       const response = await fetch(resolvedUrl);
       if (!response.ok) throw new Error('Download failed');
 

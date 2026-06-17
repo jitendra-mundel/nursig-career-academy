@@ -114,18 +114,37 @@ const AdminNotesPage = () => {
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const backendBase = apiUrl.replace(/\/api\/?$/, '');
-      let filePath = note.fileUrl;
+      let fileUrl = note.fileUrl;
 
-      if (!filePath.startsWith('http')) {
-        if (filePath.startsWith('/api/')) {
-          filePath = filePath.replace(/^\/api/, '');
+      if (fileUrl.startsWith('http')) {
+        try {
+          const parsed = new URL(fileUrl);
+          const backendOrigin = new URL(backendBase);
+
+          if (parsed.pathname.startsWith('/api/')) {
+            parsed.pathname = parsed.pathname.replace(/^\/api/, '');
+          }
+
+          if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+            parsed.protocol = backendOrigin.protocol;
+            parsed.hostname = backendOrigin.hostname;
+            parsed.port = backendOrigin.port;
+          }
+
+          fileUrl = parsed.toString();
+        } catch (e) {
+          // fallback to raw URL if parsing fails
         }
-        if (!filePath.startsWith('/')) {
-          filePath = `/${filePath}`;
+      } else {
+        if (fileUrl.startsWith('/api/')) {
+          fileUrl = fileUrl.replace(/^\/api/, '');
         }
+        if (!fileUrl.startsWith('/')) {
+          fileUrl = `/${fileUrl}`;
+        }
+        fileUrl = `${backendBase}${fileUrl}`;
       }
 
-      const fileUrl = filePath.startsWith('http') ? filePath : `${backendBase}${filePath}`;
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error('Download failed');
 
