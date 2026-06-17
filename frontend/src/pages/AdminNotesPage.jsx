@@ -112,12 +112,18 @@ const AdminNotesPage = () => {
     if (!note.fileUrl) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-      const backendBase = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
-      const fileUrl = note.fileUrl.startsWith('http')
-        ? note.fileUrl
-        : `${backendBase}${note.fileUrl.startsWith('/') ? '' : '/'}${note.fileUrl}`;
+      const apiUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+      let filePath = note.fileUrl;
 
+      if (!filePath.startsWith('http')) {
+        if (filePath.startsWith('/api/uploads')) {
+          filePath = filePath.replace('/api', '');
+        } else if (!filePath.startsWith('/')) {
+          filePath = `/${filePath}`;
+        }
+      }
+
+      const fileUrl = filePath.startsWith('http') ? filePath : `${apiUrl}${filePath}`;
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error('Download failed');
 
