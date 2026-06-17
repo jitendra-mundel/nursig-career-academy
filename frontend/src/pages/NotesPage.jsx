@@ -47,18 +47,20 @@ const NotesPage = () => {
     if (!fileUrl) return;
 
     try {
-      const apiUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const backendBase = apiUrl.replace(/\/api\/?$/, '');
       let resolvedPath = fileUrl;
 
       if (!resolvedPath.startsWith('http')) {
-        if (resolvedPath.startsWith('/api/uploads')) {
-          resolvedPath = resolvedPath.replace('/api', '');
-        } else if (!resolvedPath.startsWith('/')) {
+        if (resolvedPath.startsWith('/api/')) {
+          resolvedPath = resolvedPath.replace(/^\/api/, '');
+        }
+        if (!resolvedPath.startsWith('/')) {
           resolvedPath = `/${resolvedPath}`;
         }
       }
 
-      const resolvedUrl = resolvedPath.startsWith('http') ? resolvedPath : `${apiUrl}${resolvedPath}`;
+      const resolvedUrl = resolvedPath.startsWith('http') ? resolvedPath : `${backendBase}${resolvedPath}`;
       const response = await fetch(resolvedUrl);
       if (!response.ok) throw new Error('Download failed');
 
