@@ -47,10 +47,11 @@ const NotesPage = () => {
     if (!fileUrl) return;
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const backendBase = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
       const resolvedUrl = fileUrl.startsWith('http')
         ? fileUrl
-        : `${apiBase}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+        : `${backendBase}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
 
       const response = await fetch(resolvedUrl);
       if (!response.ok) throw new Error('Download failed');
