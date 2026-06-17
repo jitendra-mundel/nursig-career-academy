@@ -25,9 +25,7 @@ export const notesAPI = {
 
   // Upload note (admin)
   uploadNote: (formData) => {
-    return apiClient.post('/notes', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return apiClient.post('/notes', formData);
   },
 
   // Update note (admin)
