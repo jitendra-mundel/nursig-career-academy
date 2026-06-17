@@ -86,7 +86,7 @@ export const updateUser = async (req, res, next) => {
     
     // Handle file upload if present
     if (req.file) {
-      const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
+      const apiBaseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
       fieldsToUpdate.profileImage = `${apiBaseUrl}/uploads/${req.file.filename}`;
     }
     

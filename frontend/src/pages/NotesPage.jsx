@@ -43,8 +43,32 @@ const NotesPage = () => {
     }
   };
 
-  const handleDownload = (fileUrl) => {
-    window.open(fileUrl, '_blank');
+  const handleDownload = async (fileUrl) => {
+    if (!fileUrl) return;
+
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+      const resolvedUrl = fileUrl.startsWith('http')
+        ? fileUrl
+        : `${apiBase}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+
+      const response = await fetch(resolvedUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const fileName = resolvedUrl.split('/').pop() || 'note.pdf';
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      setError('Unable to download note. Please try again.');
+      console.error(error);
+    }
   };
 
   return (

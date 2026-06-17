@@ -108,14 +108,30 @@ const AdminNotesPage = () => {
     }
   };
 
-  const handleDownload = (note) => {
-    if (note.fileUrl) {
+  const handleDownload = async (note) => {
+    if (!note.fileUrl) return;
+
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+      const fileUrl = note.fileUrl.startsWith('http')
+        ? note.fileUrl
+        : `${apiBase}${note.fileUrl.startsWith('/') ? '' : '/'}${note.fileUrl}`;
+
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = `http://localhost:5000${note.fileUrl}`;
-      link.download = note.fileName || note.title;
+      link.href = blobUrl;
+      link.download = note.fileName || note.title || 'note';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      setError('Unable to download note. Please try again.');
+      console.error(error);
     }
   };
 
