@@ -71,8 +71,11 @@ export const sendOtp = async (req, res, next) => {
         return res.status(503).json({ success: false, message: err.message || 'Email OTP is not configured yet. Set SENDGRID_API_KEY and SENDGRID_FROM or SMTP settings.' });
       }
 
-      // Other failures (network, auth) — return generic 502 with some detail
-      return res.status(502).json({ success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) });
+      const response = { success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) };
+      if (err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNREFUSED')) {
+        response.message = 'SMTP connection failed (timeout or blocked). Your host may not allow direct Gmail SMTP. Use SendGrid or another transactional email provider, or verify that SMTP_PORT and SMTP_PASS are correct.';
+      }
+      return res.status(502).json(response);
     }
   } catch (error) {
     if (error.code === 'SMTP_NOT_CONFIGURED' || error.code === 'SENDGRID_CONFIG_MISSING' || error.statusCode === 503) {

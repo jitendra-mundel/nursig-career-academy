@@ -14,12 +14,13 @@ export const sendOtpEmail = async (to, code) => {
 
   const useSendGrid = Boolean(sendgridKey && sendgridFrom);
   const sendGridMisconfigured = Boolean(sendgridKey && !sendgridFrom);
+  const sendGridHalfConfigured = Boolean(!sendgridKey && sendgridFrom);
 
   if (sendGridMisconfigured) {
-    const err = new Error('SENDGRID_FROM is required when SENDGRID_API_KEY is set. Set SENDGRID_FROM to a verified SendGrid sender email.');
-    err.statusCode = 503;
-    err.code = 'SENDGRID_CONFIG_MISSING';
-    throw err;
+    console.warn('📧 SendGrid misconfigured: SENDGRID_API_KEY is set but SENDGRID_FROM is missing. Falling back to SMTP.');
+  }
+  if (sendGridHalfConfigured) {
+    console.warn('📧 SendGrid misconfigured: SENDGRID_FROM is set but SENDGRID_API_KEY is missing. Falling back to SMTP.');
   }
 
   console.log('📧 Email send config:', { useSendGrid, sendgridKey: !!sendgridKey, sendgridFrom, from, replyTo });
@@ -64,42 +65,30 @@ export const sendOtpEmail = async (to, code) => {
     };
   };
 
-  const createTransporter = (useSecure = Number(port) === 465, family = 0) => {
-    return nodemailer.createTransport({
-      service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
-      host,
-      port: Number(useSecure ? 465 : port),
-      secure: useSecure,
-      auth: { user, pass },
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 100,
-      requireTLS: !useSecure,
-      lookup: lookupFactory(family),
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-    });
-  };
+  const useSecure = Number(port) === 465;
+  const transporter = nodemailer.createTransport({
+    service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
+    host,
+    port: Number(port),
+    secure: useSecure,
+    auth: { user, pass },
+    requireTLS: !useSecure,
+    authMethod: 'LOGIN',
+    lookup: lookupFactory(0),
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
+  });
 
-  const families = [4, 6, 0];
-  const secureOptions = [true, false];
-
-  let lastError;
-  for (const secure of secureOptions) {
-    for (const family of families) {
-      const transporter = createTransporter(secure, family);
-      try {
-        await transporter.verify();
-        await transporter.sendMail({ from, to, subject, text, html });
-        console.log('📧 Sent OTP via SMTP to', to, ' (secure=', secure, ', family=', family, ')');
-        return true;
-      } catch (err) {
-        console.error(`📧 SMTP attempt failed (secure=${secure}, family=${family}):`, err.code || err.message);
-        lastError = err;
-      }
-    }
+  try {
+    await transporter.verify();
+    await transporter.sendMail({ from, to, subject, text, html });
+    console.log('📧 Sent OTP via SMTP to', to, ' (secure=', useSecure, ')');
+    return true;
+  } catch (err) {
+    console.error('📧 SMTP send failed:', err.code || err.message || err.toString());
+    throw err;
   }
 
   console.error('📧 All SMTP attempts failed', lastError && (lastError.code || lastError.message));
