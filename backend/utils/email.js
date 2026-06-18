@@ -2,10 +2,15 @@ import nodemailer from 'nodemailer';
 
 // Send OTP email. Tries SendGrid Web API first if configured, otherwise falls back to SMTP.
 export const sendOtpEmail = async (to, code) => {
-  const sendgridKey = process.env.SENDGRID_API_KEY;
-  const sendgridFrom = process.env.SENDGRID_FROM;
-  const from = sendgridFrom || process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com';
-  const replyTo = process.env.EMAIL_FROM || process.env.SMTP_USER || undefined;
+  const normalize = (value) => (typeof value === 'string' ? value.trim() : value);
+  const normalizePassword = (value) => (typeof value === 'string' ? value.replace(/\s+/g, '') : value);
+
+  const sendgridKey = normalize(process.env.SENDGRID_API_KEY);
+  const sendgridFrom = normalize(process.env.SENDGRID_FROM);
+  const user = normalize(process.env.SMTP_USER || process.env.EMAIL_USER || process.env.EMAIL_FROM);
+  const pass = normalizePassword(process.env.SMTP_PASS || process.env.EMAIL_PASSWORD);
+  const from = sendgridFrom || normalize(process.env.EMAIL_FROM) || user || 'no-reply@example.com';
+  const replyTo = normalize(process.env.EMAIL_FROM) || user || undefined;
 
   const useSendGrid = Boolean(sendgridKey && sendgridFrom);
   const sendGridMisconfigured = Boolean(sendgridKey && !sendgridFrom);
@@ -39,16 +44,14 @@ export const sendOtpEmail = async (to, code) => {
   }
 
   // --- SMTP fallback (keeps previous logic) ---
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+  const port = process.env.SMTP_PORT || process.env.EMAIL_PORT;
 
   console.log('📧 SMTP Debug:', { host: !!host, port: !!port, user: !!user, pass: !!pass, from });
 
   if (!host || !port || !user || !pass) {
     console.error('❌ SMTP Config Missing:', { host, port, user, pass });
-    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env or set SENDGRID_API_KEY');
+    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS or EMAIL_USER and EMAIL_PASSWORD in backend/.env or set SENDGRID_API_KEY');
     error.statusCode = 503;
     error.code = 'SMTP_NOT_CONFIGURED';
     throw error;
