@@ -3,7 +3,16 @@ import nodemailer from 'nodemailer';
 // Send OTP email. Tries SendGrid Web API first if configured, otherwise falls back to SMTP.
 export const sendOtpEmail = async (to, code) => {
   const sendgridKey = process.env.SENDGRID_API_KEY;
-  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+  const sendgridFrom = process.env.SENDGRID_FROM;
+  const verifiedFrom = sendgridFrom || process.env.EMAIL_FROM || process.env.SMTP_USER;
+  const from = verifiedFrom || 'no-reply@example.com';
+  const replyTo = process.env.EMAIL_FROM || process.env.SMTP_USER || undefined;
+
+  if (sendgridKey && !sendgridFrom) {
+    console.warn('📧 SendGrid is enabled but SENDGRID_FROM is not configured. Use a SendGrid verified sender or authenticated domain for better delivery.');
+  }
+
+  console.log('📧 Email send config:', { sendgridKey: !!sendgridKey, sendgridFrom, from, replyTo });
 
   const subject = 'Your verification code';
   const text = `Your verification OTP is: ${code}. It will expire in 5 minutes.`;
@@ -14,8 +23,9 @@ export const sendOtpEmail = async (to, code) => {
     try {
       const sgMail = (await import('@sendgrid/mail')).default;
       sgMail.setApiKey(sendgridKey);
-      await sgMail.send({ to, from, subject, text, html });
-      console.log('📧 Sent OTP via SendGrid to', to);
+      const res = await sgMail.send({ to, from, subject, text, html, replyTo });
+      // res is an array of response objects when using @sendgrid/mail
+      console.log('📧 Sent OTP via SendGrid to', to, ' SendGrid response:', res && res[0] ? { statusCode: res[0].statusCode, headers: res[0].headers } : res);
       return true;
     } catch (err) {
       console.error('📧 SendGrid send failed:', err && (err.code || err.message || err.toString()));
