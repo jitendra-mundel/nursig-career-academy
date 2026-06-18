@@ -4,22 +4,27 @@ import nodemailer from 'nodemailer';
 export const sendOtpEmail = async (to, code) => {
   const sendgridKey = process.env.SENDGRID_API_KEY;
   const sendgridFrom = process.env.SENDGRID_FROM;
-  const verifiedFrom = sendgridFrom || process.env.EMAIL_FROM || process.env.SMTP_USER;
-  const from = verifiedFrom || 'no-reply@example.com';
+  const from = sendgridFrom || process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com';
   const replyTo = process.env.EMAIL_FROM || process.env.SMTP_USER || undefined;
 
-  if (sendgridKey && !sendgridFrom) {
-    console.warn('📧 SendGrid is enabled but SENDGRID_FROM is not configured. Use a SendGrid verified sender or authenticated domain for better delivery.');
+  const useSendGrid = Boolean(sendgridKey && sendgridFrom);
+  const sendGridMisconfigured = Boolean(sendgridKey && !sendgridFrom);
+
+  if (sendGridMisconfigured) {
+    const err = new Error('SENDGRID_FROM is required when SENDGRID_API_KEY is set. Set SENDGRID_FROM to a verified SendGrid sender email.');
+    err.statusCode = 503;
+    err.code = 'SENDGRID_CONFIG_MISSING';
+    throw err;
   }
 
-  console.log('📧 Email send config:', { sendgridKey: !!sendgridKey, sendgridFrom, from, replyTo });
+  console.log('📧 Email send config:', { useSendGrid, sendgridKey: !!sendgridKey, sendgridFrom, from, replyTo });
 
   const subject = 'Your verification code';
   const text = `Your verification OTP is: ${code}. It will expire in 5 minutes.`;
   const html = `<p>Your verification OTP is: <strong>${code}</strong></p><p>It will expire in 5 minutes.</p>`;
 
-  // If SendGrid API key is present, try sending using SendGrid first (more reliable on cloud hosts)
-  if (sendgridKey) {
+  // If SendGrid API key and verified sender are configured, try SendGrid first.
+  if (useSendGrid) {
     try {
       const sgMail = (await import('@sendgrid/mail')).default;
       sgMail.setApiKey(sendgridKey);

@@ -64,10 +64,10 @@ export const sendOtp = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: 'OTP sent' });
   } catch (error) {
-    if (error.code === 'SMTP_NOT_CONFIGURED' || error.statusCode === 503) {
+    if (error.code === 'SMTP_NOT_CONFIGURED' || error.code === 'SENDGRID_CONFIG_MISSING' || error.statusCode === 503) {
       return res.status(503).json({
         success: false,
-        message: 'Email OTP is not configured yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env',
+        message: error.message || 'Email OTP is not configured yet. Set SENDGRID_API_KEY and SENDGRID_FROM or SMTP settings.',
       });
     }
     next(error);
