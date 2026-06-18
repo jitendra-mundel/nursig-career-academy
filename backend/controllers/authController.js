@@ -59,10 +59,21 @@ export const sendOtp = async (req, res, next) => {
 
     await Otp.create({ email, code, expiresAt });
 
-    // send email (or log)
-    await sendOtpEmail(email, code);
+    // send email (tries SendGrid first if configured, falls back to SMTP)
+    try {
+      await sendOtpEmail(email, code);
+      console.log(`✅ OTP ${code} sent to ${email}`);
+      return res.status(200).json({ success: true, message: 'OTP sent' });
+    } catch (err) {
+      console.error('❌ Failed to send OTP email:', err && (err.code || err.message || err.toString()));
+      // Respond with safe error info for debugging (do not expose secrets)
+      if (err.code === 'SMTP_NOT_CONFIGURED' || err.code === 'SENDGRID_CONFIG_MISSING' || err.statusCode === 503) {
+        return res.status(503).json({ success: false, message: err.message || 'Email OTP is not configured yet. Set SENDGRID_API_KEY and SENDGRID_FROM or SMTP settings.' });
+      }
 
-    res.status(200).json({ success: true, message: 'OTP sent' });
+      // Other failures (network, auth) — return generic 502 with some detail
+      return res.status(502).json({ success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) });
+    }
   } catch (error) {
     if (error.code === 'SMTP_NOT_CONFIGURED' || error.code === 'SENDGRID_CONFIG_MISSING' || error.statusCode === 503) {
       return res.status(503).json({
@@ -71,6 +82,36 @@ export const sendOtp = async (req, res, next) => {
       });
     }
     next(error);
+  }
+};
+
+/**
+ * Test Email endpoint - POST /api/auth/test-email
+ * Body: { to, subject, text }
+ * This is for debugging email provider configuration only.
+ */
+export const testEmail = async (req, res, next) => {
+  try {
+    const { to, subject, text } = req.body;
+    if (!to) return res.status(400).json({ success: false, message: 'Recipient `to` is required' });
+
+    // Use the sendOtpEmail helper with a temporary code (re-uses SendGrid/SMTP logic)
+    const fakeCode = '00000';
+    const msgSubject = subject || 'Test email from backend';
+    const msgText = text || `This is a test email. Code: ${fakeCode}`;
+
+    // Try SendGrid path explicitly if configured
+    const { sendOtpEmail: send } = await import('../utils/email.js');
+    try {
+      // sendOtpEmail expects (to, code) — we'll call and ignore the code in the template
+      await send(to, fakeCode);
+      return res.status(200).json({ success: true, message: 'Test email sent (OTP flow)' });
+    } catch (err) {
+      console.error('Test email failed:', err && (err.code || err.message));
+      return res.status(502).json({ success: false, message: 'Test email send failed', detail: err && (err.code || err.message) });
+    }
+  } catch (err) {
+    next(err);
   }
 };
 
