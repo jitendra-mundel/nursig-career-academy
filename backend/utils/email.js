@@ -1,32 +1,46 @@
 import nodemailer from 'nodemailer';
 
+// Send OTP email. Tries SendGrid Web API first if configured, otherwise falls back to SMTP.
 export const sendOtpEmail = async (to, code) => {
-  // Read from process.env at function call time (not module load time)
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.EMAIL_FROM || (user || 'no-reply@example.com');
-
-  console.log('📧 Email Debug:', { host: !!host, port: !!port, user: !!user, pass: !!pass, from });
-  console.log('📧 Values:', { host, port, user, pass: pass ? '***' : 'undefined' });
+  const sendgridKey = process.env.SENDGRID_API_KEY;
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com';
 
   const subject = 'Your verification code';
   const text = `Your verification OTP is: ${code}. It will expire in 5 minutes.`;
   const html = `<p>Your verification OTP is: <strong>${code}</strong></p><p>It will expire in 5 minutes.</p>`;
 
+  // If SendGrid API key is present, try sending using SendGrid first (more reliable on cloud hosts)
+  if (sendgridKey) {
+    try {
+      const sgMail = (await import('@sendgrid/mail')).default;
+      sgMail.setApiKey(sendgridKey);
+      await sgMail.send({ to, from, subject, text, html });
+      console.log('📧 Sent OTP via SendGrid to', to);
+      return true;
+    } catch (err) {
+      console.error('📧 SendGrid send failed:', err && (err.code || err.message || err.toString()));
+      // continue to SMTP fallback
+    }
+  }
+
+  // --- SMTP fallback (keeps previous logic) ---
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  console.log('📧 SMTP Debug:', { host: !!host, port: !!port, user: !!user, pass: !!pass, from });
+
   if (!host || !port || !user || !pass) {
     console.error('❌ SMTP Config Missing:', { host, port, user, pass });
-    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env');
+    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env or set SENDGRID_API_KEY');
     error.statusCode = 503;
     error.code = 'SMTP_NOT_CONFIGURED';
     throw error;
   }
 
-  // Helper to force IPv4/IPv6 lookup when needed
   const lookupFactory = (family) => {
     return (hostname, options, callback) => {
-      // family: 4, 6 or 0 (0 => system default)
       if (!family || family === 0) return require('dns').lookup(hostname, options, callback);
       return require('dns').lookup(hostname, { family }, callback);
     };
@@ -51,7 +65,6 @@ export const sendOtpEmail = async (to, code) => {
     });
   };
 
-  // Try combinations: secure (465) then non-secure (STARTTLS/587), prefer IPv4, then IPv6, then default
   const families = [4, 6, 0];
   const secureOptions = [true, false];
 
@@ -60,21 +73,17 @@ export const sendOtpEmail = async (to, code) => {
     for (const family of families) {
       const transporter = createTransporter(secure, family);
       try {
-        // verify quickly to fail fast on auth/network
         await transporter.verify();
         await transporter.sendMail({ from, to, subject, text, html });
+        console.log('📧 Sent OTP via SMTP to', to, ' (secure=', secure, ', family=', family, ')');
         return true;
       } catch (err) {
         console.error(`📧 SMTP attempt failed (secure=${secure}, family=${family}):`, err.code || err.message);
         lastError = err;
-        // continue to next attempt
       }
     }
   }
 
-  // If reached here, all attempts failed
   console.error('📧 All SMTP attempts failed', lastError && (lastError.code || lastError.message));
   throw lastError || new Error('SMTP send failed');
-
-  return true;
 };
