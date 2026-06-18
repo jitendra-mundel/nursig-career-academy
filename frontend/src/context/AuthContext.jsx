@@ -165,7 +165,12 @@ export const AuthProvider = ({ children }) => {
 
   const sendOtp = async (email) => {
     try {
-      const response = await fetch(`${API_BASE}/auth/send-otp`, {
+      const url = `${API_BASE}/auth/send-otp`;
+      if (import.meta.env.DEV) {
+        console.debug('Sending OTP request to:', url, 'email:', email);
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -174,9 +179,9 @@ export const AuthProvider = ({ children }) => {
       const data = await parseJsonSafe(response);
       if (!response.ok) {
         if (response.status === 503) {
-          throw new Error('Email OTP is not configured yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env');
+          throw new Error(data?.message || `Email OTP is not configured yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in backend/.env. Request URL: ${url}`);
         }
-        throw new Error(data?.message || `OTP send failed (${response.status})`);
+        throw new Error(data?.message || `OTP send failed (${response.status}) to ${url}`);
       }
       return data;
     } catch (err) {
