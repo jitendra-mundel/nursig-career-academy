@@ -22,19 +22,18 @@ import { notesAPI } from '../api/endpoints';
 const NotesPage = () => {
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
   const [fileType, setFileType] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchNotes();
-  }, [search, category, fileType]);
+  }, [search, fileType]);
 
   const fetchNotes = async () => {
     try {
       setLoading(true);
-      const response = await notesAPI.getAllNotes(category, search, 1, 20, fileType);
+      const response = await notesAPI.getAllNotes('', search, 1, 20, fileType);
       setNotes(response.data.notes || []);
     } catch (err) {
       setError('Failed to fetch notes');
@@ -112,8 +111,8 @@ const NotesPage = () => {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           <Paper sx={{ p: 3, mb: 4 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={7}>
                 <TextField
                   fullWidth
                   label="Search Notes"
@@ -122,26 +121,7 @@ const NotesPage = () => {
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Filter by Category"
-                  select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  size="small"
-                  SelectProps={{
-                    native: true,
-                  }}
-                >
-                  <option value="">All Categories</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Physics">Physics</option>
-                  <option value="Chemistry">Chemistry</option>
-                  <option value="Biology">Biology</option>
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} md={5}>
                 <TextField
                   fullWidth
                   label="File Type"
