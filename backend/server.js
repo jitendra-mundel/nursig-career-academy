@@ -5,6 +5,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import fs from 'fs';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
 
@@ -73,7 +75,41 @@ const uploadsDir = path.join(__dirname, 'uploads');
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files from absolute backend uploads path
+// Route to serve uploaded files. We first check for a local disk file
+// (backwards-compatible) and if not present stream from MongoDB GridFS.
+app.get('/uploads/:filename', async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const absolutePath = path.join(uploadsDir, filename);
+
+    // If a local file exists (legacy), serve it directly
+    if (fs.existsSync(absolutePath)) {
+      return res.sendFile(absolutePath);
+    }
+
+    // If no DB connection yet, return 404 so static handler or client can handle
+    if (!mongoose.connection || !mongoose.connection.db) {
+      return res.status(404).end();
+    }
+
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+    const filesColl = mongoose.connection.db.collection('uploads.files');
+    const fileDoc = await filesColl.findOne({ filename });
+
+    if (!fileDoc) return res.status(404).end();
+
+    if (fileDoc.contentType) res.setHeader('Content-Type', fileDoc.contentType);
+    if (fileDoc.length) res.setHeader('Content-Length', fileDoc.length);
+
+    const downloadStream = bucket.openDownloadStreamByName(filename);
+    downloadStream.on('error', (err) => next(err));
+    downloadStream.pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Serve uploaded files from absolute backend uploads path (fallback/static)
 app.use('/uploads', express.static(uploadsDir));
 
 /**

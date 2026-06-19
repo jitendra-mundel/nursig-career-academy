@@ -37,7 +37,7 @@ const NoteCard = ({ note, onDownload, onDelete }) => {
       <CardActions sx={{ marginTop: 'auto', flexWrap: 'wrap', gap: 1, p: 2 }}>
         {onDownload && (
           <Button size="small" color="secondary" variant="contained" onClick={onDownload}>
-            Download PDF
+            {note.fileType === 'pdf' ? 'Download PDF' : `Download ${note.fileType?.toUpperCase() || 'File'}`}
           </Button>
         )}
         {onDelete && (

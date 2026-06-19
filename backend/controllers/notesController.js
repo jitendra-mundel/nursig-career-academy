@@ -1,4 +1,7 @@
 import Notes from '../models/Notes.js';
+import mongoose from 'mongoose';
+import { Readable } from 'stream';
+import path from 'path';
 
 /**
  * Get All Notes (Optimized for 3000+ users)
@@ -86,38 +89,56 @@ export const getNoteById = async (req, res, next) => {
  */
 export const uploadNote = async (req, res, next) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please upload a PDF file',
-      });
+    // Expect multer.memoryStorage -> req.file.buffer available
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
     }
 
     const { title, description, category, subject, fileType } = req.body;
 
     if (!title || !category || !subject) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide title, category, and subject',
-      });
+      return res.status(400).json({ success: false, message: 'Please provide title, category, and subject' });
     }
 
-    const note = await Notes.create({
-      title,
-      description,
-      category,
-      subject,
-      fileType: fileType || 'pdf',
-      fileUrl: `/uploads/${req.file.filename}`,
-      fileName: req.file.originalname,
-      uploadedBy: req.user.id,
-    });
+    // Use a deterministic filename for GridFS to keep existing `/uploads/:filename` URL format
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = req.file.originalname ? path.extname(req.file.originalname) : '';
+    const gridFilename = `${uniqueSuffix}${ext}`;
 
-    res.status(201).json({
-      success: true,
-      message: 'Note uploaded successfully',
-      note,
-    });
+    // Ensure mongoose connection is ready
+    if (!mongoose.connection || !mongoose.connection.db) {
+      return res.status(500).json({ success: false, message: 'Database not connected' });
+    }
+
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+
+    // Stream the buffer into GridFS
+    const readableStream = Readable.from(req.file.buffer);
+    const uploadStream = bucket.openUploadStream(gridFilename, { contentType: req.file.mimetype });
+
+    readableStream.pipe(uploadStream)
+      .on('error', (err) => {
+        next(err);
+      })
+      .on('finish', async () => {
+        try {
+          const note = await Notes.create({
+            title,
+            description,
+            category,
+            subject,
+            fileType: fileType || 'pdf',
+            // Keep the same public URL shape so frontend doesn't change
+            fileUrl: `/uploads/${gridFilename}`,
+            fileName: req.file.originalname,
+            uploadedBy: req.user.id,
+          });
+
+          res.status(201).json({ success: true, message: 'Note uploaded successfully', note });
+        } catch (e) {
+          next(e);
+        }
+      });
   } catch (error) {
     next(error);
   }

@@ -29,7 +29,14 @@ const normalizeUser = (rawUser) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+const [user, setUser] = useState(() => {
+  const storedUser = localStorage.getItem('user');
+  try {
+    return storedUser ? normalizeUser(JSON.parse(storedUser)) : null;
+  } catch {
+    return null;
+  }
+});
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

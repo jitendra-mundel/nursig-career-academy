@@ -44,6 +44,9 @@ export const sendTokenResponse = (user, statusCode, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      enrollmentNumber: user.enrollmentNumber,
+      profileImage: user.profileImage,
+      isActive: user.isActive,
     },
   });
 };

@@ -14,15 +14,10 @@ if (!fs.existsSync(uploadsDir)) {
  * Multer configuration for file uploads
  * Handles PDF file uploads to uploads/ directory
  */
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
+// Use memoryStorage so uploaded files are available in `req.file.buffer`.
+// We will persist files into MongoDB GridFS from the controller to avoid
+// relying on the ephemeral local filesystem of the host (Render etc.).
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   // Accept PDF, image, and common office files for notes upload

@@ -6,6 +6,7 @@ import Question from '../models/Question.js';
 import Otp from '../models/Otp.js';
 import fs from 'fs';
 import path from 'path';
+import mongoose from 'mongoose';
 
 /**
  * Get All Users (Admin Only, Optimized for 3000+ users)
@@ -177,7 +178,23 @@ export const deleteUser = async (req, res, next) => {
         const filePath = n.fileUrl && n.fileUrl.includes('/uploads/') ? n.fileUrl.split('/uploads/').pop() : n.fileName;
         if (filePath) {
           const absolute = path.join(process.cwd(), 'uploads', filePath);
-          if (fs.existsSync(absolute)) fs.unlinkSync(absolute);
+          if (fs.existsSync(absolute)) {
+            fs.unlinkSync(absolute);
+          } else {
+            // Attempt to delete from GridFS if file not present on disk
+            try {
+              if (mongoose.connection && mongoose.connection.db) {
+                const filesColl = mongoose.connection.db.collection('uploads.files');
+                const fileDoc = await filesColl.findOne({ filename: filePath });
+                if (fileDoc) {
+                  const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+                  await bucket.delete(fileDoc._id);
+                }
+              }
+            } catch (e) {
+              console.warn('GridFS delete failed:', e && (e.message || e));
+            }
+          }
         }
       } catch (e) {
         console.warn('Failed to delete note file:', e.message || e);
