@@ -20,7 +20,6 @@ import { userAPI } from '../api/endpoints';
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-    const { user } = useAuth();
   const { mode, toggleMode } = useThemeMode();
 
   const pageTitle = user?.role === 'admin' ? 'Admin Settings' : 'Settings';
