@@ -86,6 +86,14 @@ const RegisterPage = () => {
     <Container maxWidth="sm" sx={{ position: 'relative', py: { xs: 6, md: 12 } }}>
       <Box className="auth-illustration top" />
       <Box className="auth-illustration bottom" />
+      <Box className="auth-ecg-bg">
+        <Box className="auth-ecg-line line1" />
+        <Box className="auth-ecg-line line2" />
+        <Box className="auth-ecg-line line3" />
+        <Box className="auth-ecg-line line4" />
+        <Box className="auth-ecg-line line5" />
+        <Box className="auth-ecg-line line6" />
+      </Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', minHeight: '100vh', alignItems: 'center', position: 'relative', zIndex: 1 }}>
         <Paper elevation={3} sx={{ p: { xs: 3, sm: 5 }, width: '100%', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <Box sx={{ mb: 4, textAlign: 'center' }}>

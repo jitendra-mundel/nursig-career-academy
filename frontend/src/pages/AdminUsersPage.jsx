@@ -51,6 +51,17 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user and all their data?')) return;
+    try {
+      await userAPI.deleteUser(id);
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete user');
+    }
+  };
+
   const performanceByUser = useMemo(() => {
     return results.reduce((accumulator, result) => {
       const key = result.userId?._id || result.userId;
@@ -149,6 +160,7 @@ const AdminUsersPage = () => {
                     <TableCell>Tests Taken</TableCell>
                     <TableCell>Payment Details</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -180,6 +192,11 @@ const AdminUsersPage = () => {
                             color={userItem.isActive === false ? 'error' : 'success'}
                             size="small"
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1}>
+                            <Chip label="Delete" color="error" size="small" onClick={() => handleDeleteUser(userItem._id)} />
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     );

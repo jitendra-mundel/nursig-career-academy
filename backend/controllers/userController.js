@@ -1,4 +1,11 @@
 import User from '../models/User.js';
+import Notes from '../models/Notes.js';
+import TestResult from '../models/TestResult.js';
+import Test from '../models/Test.js';
+import Question from '../models/Question.js';
+import Otp from '../models/Otp.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Get All Users (Admin Only, Optimized for 3000+ users)
@@ -144,4 +151,62 @@ export const deactivateUser = async (req, res, next) => {
   }
 };
 
-export default { getAllUsers, getUserById, updateUser, deactivateUser };
+/**
+ * Delete User and related data (Admin or user themselves)
+ * DELETE /api/users/:id
+ */
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Only admin or the user themselves can delete
+    if (req.user.role !== 'admin' && req.user.id !== id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this user' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Delete dependent records: Otp (by email), Notes, TestResults, Questions, Tests
+    await Otp.deleteMany({ email: user.email });
+
+    // Remove note files from disk if present
+    const notes = await Notes.find({ uploadedBy: id }).select('fileUrl fileName').lean();
+    for (const n of notes) {
+      try {
+        const filePath = n.fileUrl && n.fileUrl.includes('/uploads/') ? n.fileUrl.split('/uploads/').pop() : n.fileName;
+        if (filePath) {
+          const absolute = path.join(process.cwd(), 'uploads', filePath);
+          if (fs.existsSync(absolute)) fs.unlinkSync(absolute);
+        }
+      } catch (e) {
+        console.warn('Failed to delete note file:', e.message || e);
+      }
+    }
+
+    await Notes.deleteMany({ uploadedBy: id });
+    await TestResult.deleteMany({ userId: id });
+    await Question.deleteMany({ createdBy: id });
+    await Test.deleteMany({ createdBy: id });
+
+    // Remove profile image file if stored under /uploads
+    if (user.profileImage && user.profileImage.includes('/uploads/')) {
+      try {
+        const profilePath = user.profileImage.split('/uploads/').pop();
+        const absoluteProfile = path.join(process.cwd(), 'uploads', profilePath);
+        if (fs.existsSync(absoluteProfile)) fs.unlinkSync(absoluteProfile);
+      } catch (e) {
+        console.warn('Failed to delete profile image:', e.message || e);
+      }
+    }
+
+    // Finally delete user
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({ success: true, message: 'User and related data deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { getAllUsers, getUserById, updateUser, deactivateUser, deleteUser };

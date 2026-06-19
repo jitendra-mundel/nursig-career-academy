@@ -15,10 +15,12 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeModeContext';
+import { userAPI } from '../api/endpoints';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+    const { user } = useAuth();
   const { mode, toggleMode } = useThemeMode();
 
   const pageTitle = user?.role === 'admin' ? 'Admin Settings' : 'Settings';
@@ -70,6 +72,25 @@ const SettingsPage = () => {
                   </Typography>
                   <Button variant="contained" onClick={() => navigate(user?.role === 'admin' ? '/admin/profile' : '/user/profile')}>
                     Open Profile
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={async () => {
+                      if (!window.confirm('This will permanently delete your account and all data. Continue?')) return;
+                      try {
+                          await userAPI.deleteCurrentUser();
+                        // Clear local session
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        window.location.href = '/';
+                      } catch (err) {
+                        console.error(err);
+                        alert('Failed to delete account. Try again later.');
+                      }
+                    }}
+                  >
+                    Remove My Account
                   </Button>
                 </Stack>
               </Paper>

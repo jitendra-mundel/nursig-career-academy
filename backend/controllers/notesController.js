@@ -6,7 +6,7 @@ import Notes from '../models/Notes.js';
  */
 export const getAllNotes = async (req, res, next) => {
   try {
-    const { category, search, page = 1, limit = 20 } = req.query;
+    const { category, fileType, search, page = 1, limit = 20 } = req.query;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
@@ -15,6 +15,9 @@ export const getAllNotes = async (req, res, next) => {
 
     if (category) {
       query.category = category;
+    }
+    if (fileType) {
+      query.fileType = fileType;
     }
 
     if (search) {
@@ -27,7 +30,7 @@ export const getAllNotes = async (req, res, next) => {
     // Lean queries + field selection for performance
     const notes = await Notes.find(query)
       .lean()
-      .select('title description category subject fileUrl fileName uploadedAt')
+      .select('title description category subject fileUrl fileName fileType uploadedAt')
       .populate('uploadedBy', 'name')
       .sort('-createdAt')
       .skip(skip)
@@ -90,7 +93,7 @@ export const uploadNote = async (req, res, next) => {
       });
     }
 
-    const { title, description, category, subject } = req.body;
+    const { title, description, category, subject, fileType } = req.body;
 
     if (!title || !category || !subject) {
       return res.status(400).json({
@@ -104,6 +107,7 @@ export const uploadNote = async (req, res, next) => {
       description,
       category,
       subject,
+      fileType: fileType || 'pdf',
       fileUrl: `/uploads/${req.file.filename}`,
       fileName: req.file.originalname,
       uploadedBy: req.user.id,

@@ -49,14 +49,17 @@ const Navbar = () => {
     <AppBar
       position="sticky"
       elevation={0}
+      className="navbar-ecg-container"
       sx={{
         background: 'linear-gradient(90deg, rgba(124,58,237,0.96), rgba(14,165,233,0.92))',
         color: theme.palette.primary.contrastText,
         backdropFilter: 'blur(18px)',
         borderBottom: '1px solid rgba(255,255,255,0.18)',
         borderRadius: 0,
+        overflow: 'hidden',
       }}
     >
+      <Box className="navbar-ecg" />
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ minHeight: { xs: 64, sm: 72 } }}>
           <Box

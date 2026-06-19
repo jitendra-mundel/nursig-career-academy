@@ -5,9 +5,9 @@ import apiClient from './apiClient.js';
  */
 export const notesAPI = {
   // Get all notes
-  getAllNotes: (category = '', search = '', page = 1, limit = 20) => {
+  getAllNotes: (category = '', search = '', page = 1, limit = 20, fileType = '') => {
     return apiClient.get('/notes', {
-      params: { category, search, page, limit },
+      params: { category, search, page, limit, fileType },
     });
   },
 
@@ -164,5 +164,13 @@ export const userAPI = {
   // Deactivate user (admin)
   deactivateUser: (id) => {
     return apiClient.put(`/users/${id}/deactivate`);
+  },
+  // Delete user (admin)
+  deleteUser: (id) => {
+    return apiClient.delete(`/users/${id}`);
+  },
+  // Delete current authenticated user
+  deleteCurrentUser: () => {
+    return apiClient.delete('/users/me');
   },
 };

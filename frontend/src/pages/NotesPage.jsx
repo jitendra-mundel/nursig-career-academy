@@ -23,17 +23,18 @@ const NotesPage = () => {
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [fileType, setFileType] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchNotes();
-  }, [search, category]);
+  }, [search, category, fileType]);
 
   const fetchNotes = async () => {
     try {
       setLoading(true);
-      const response = await notesAPI.getAllNotes(category, search);
+      const response = await notesAPI.getAllNotes(category, search, 1, 20, fileType);
       setNotes(response.data.notes || []);
     } catch (err) {
       setError('Failed to fetch notes');
@@ -138,6 +139,25 @@ const NotesPage = () => {
                   <option value="Physics">Physics</option>
                   <option value="Chemistry">Chemistry</option>
                   <option value="Biology">Biology</option>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  label="File Type"
+                  select
+                  value={fileType}
+                  onChange={(e) => setFileType(e.target.value)}
+                  size="small"
+                  SelectProps={{ native: true }}
+                >
+                  <option value="">All Types</option>
+                  <option value="pdf">PDF</option>
+                  <option value="png">PNG</option>
+                  <option value="jpg">JPG</option>
+                  <option value="jpeg">JPEG</option>
+                  <option value="docx">DOCX</option>
+                  <option value="pptx">PPTX</option>
                 </TextField>
               </Grid>
             </Grid>

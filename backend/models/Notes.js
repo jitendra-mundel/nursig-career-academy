@@ -32,6 +32,11 @@ const notesSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    fileType: {
+      type: String,
+      enum: ['pdf', 'png', 'jpg', 'jpeg', 'docx', 'pptx', 'any'],
+      default: 'pdf',
+    },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
