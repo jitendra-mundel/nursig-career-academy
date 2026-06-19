@@ -14,6 +14,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ECGWave from './ECGWave';
 
 /**
  * Navbar Component
@@ -49,7 +50,6 @@ const Navbar = () => {
     <AppBar
       position="sticky"
       elevation={0}
-      className="navbar-ecg-container"
       sx={{
         background: 'linear-gradient(90deg, rgba(124,58,237,0.96), rgba(14,165,233,0.92))',
         color: theme.palette.primary.contrastText,
@@ -57,10 +57,11 @@ const Navbar = () => {
         borderBottom: '1px solid rgba(255,255,255,0.18)',
         borderRadius: 0,
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      <Box className="navbar-ecg" />
-      <Container maxWidth="lg">
+      <ECGWave variant="navbar" />
+      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 2 }}>
         <Toolbar disableGutters sx={{ minHeight: { xs: 64, sm: 72 } }}>
           <Box
             onClick={() => navigate('/')}
