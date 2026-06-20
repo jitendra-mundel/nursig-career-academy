@@ -12,7 +12,9 @@ export const sendOtpEmail = async (to, code) => {
   const from = sendgridFrom || normalize(process.env.EMAIL_FROM) || user || 'no-reply@example.com';
   const replyTo = normalize(process.env.EMAIL_FROM) || user || undefined;
 
-  const useSendGrid = Boolean(sendgridKey && sendgridFrom);
+  // Disable SendGrid usage - force SMTP per user request
+  // const useSendGrid = Boolean(sendgridKey && sendgridFrom);
+  const useSendGrid = false;
   const sendGridMisconfigured = Boolean(sendgridKey && !sendgridFrom);
   const sendGridHalfConfigured = Boolean(!sendgridKey && sendgridFrom);
 
@@ -29,20 +31,9 @@ export const sendOtpEmail = async (to, code) => {
   const text = `Your verification OTP is: ${code}. It will expire in 5 minutes.`;
   const html = `<p>Your verification OTP is: <strong>${code}</strong></p><p>It will expire in 5 minutes.</p>`;
 
-  // If SendGrid API key and verified sender are configured, try SendGrid first.
-  if (useSendGrid) {
-    try {
-      const sgMail = (await import('@sendgrid/mail')).default;
-      sgMail.setApiKey(sendgridKey);
-      const res = await sgMail.send({ to, from, subject, text, html, replyTo });
-      // res is an array of response objects when using @sendgrid/mail
-      console.log('📧 Sent OTP via SendGrid to', to, ' SendGrid response:', res && res[0] ? { statusCode: res[0].statusCode, headers: res[0].headers } : res);
-      return true;
-    } catch (err) {
-      console.error('📧 SendGrid send failed:', err && (err.code || err.message || err.toString()));
-      // continue to SMTP fallback
-    }
-  }
+  // SendGrid path intentionally disabled. SMTP will be used below.
+  // If you want to re-enable SendGrid in future, remove the `useSendGrid = false` line above
+  // and restore the SendGrid send block.
 
   // --- SMTP fallback (keeps previous logic) ---
   const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
