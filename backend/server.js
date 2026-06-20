@@ -72,6 +72,60 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, 'uploads');
 
+const contentTypeByExtension = {
+  '.pdf': 'application/pdf',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.doc': 'application/msword',
+  '.ppt': 'application/vnd.ms-powerpoint',
+};
+
+const getContentType = (filename) => {
+  const ext = path.extname(filename).toLowerCase();
+  return contentTypeByExtension[ext] || 'application/octet-stream';
+};
+
+const importLocalUploadsToGridFS = async () => {
+  if (process.env.IMPORT_UPLOADS_TO_GRIDFS === 'false') return;
+  if (!mongoose.connection || !mongoose.connection.db) return;
+
+  try {
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+    const filesColl = mongoose.connection.db.collection('uploads.files');
+    const filenames = await fs.promises.readdir(uploadsDir);
+
+    for (const filename of filenames) {
+      const absolutePath = path.join(uploadsDir, filename);
+      const stat = await fs.promises.stat(absolutePath);
+      if (!stat.isFile()) continue;
+
+      const fileDoc = await filesColl.findOne({ filename });
+      if (fileDoc) continue;
+
+      const readStream = fs.createReadStream(absolutePath);
+      const uploadStream = bucket.openUploadStream(filename, {
+        contentType: getContentType(filename),
+      });
+
+      await new Promise((resolve, reject) => {
+        readStream
+          .pipe(uploadStream)
+          .on('error', reject)
+          .on('finish', resolve);
+      });
+
+      console.log(`✅ Imported local upload to GridFS: ${filename}`);
+    }
+  } catch (error) {
+    console.error('❌ Failed to import local uploads into GridFS:', error.message);
+  }
+};
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -153,6 +207,7 @@ let server;
 const startServer = async () => {
   try {
     await connectDB();
+    await importLocalUploadsToGridFS();
 
     server = app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
