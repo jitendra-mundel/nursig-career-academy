@@ -52,7 +52,7 @@ const LoginPage = () => {
         <Paper elevation={3} sx={{ p: { xs: 3, sm: 5 }, width: '100%', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <Box sx={{ mb: 4, textAlign: 'center' }}>
             <Typography variant="h4" sx={{ fontWeight: '900', letterSpacing: '0.12em', background: 'linear-gradient(135deg, #7c3aed, #22d3ee)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Nursing Career Academy
+              NR Nursing Quiz & Notes
             </Typography>
           </Box>
 

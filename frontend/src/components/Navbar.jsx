@@ -76,8 +76,8 @@ const Navbar = () => {
           >
             <Box
               component="img"
-              src="/website%20logo.png"
-              alt="Nursing Career Academy"
+              src="/nursing logo.png"
+              alt="NR Nursing Quiz & Notes"
               sx={{ height: 40, width: 'auto', objectFit: 'contain', display: 'block' }}
             />
             <Typography
@@ -90,7 +90,7 @@ const Navbar = () => {
                 display: { xs: 'none', sm: 'block' },
               }}
             >
-              Nursing Career Academy
+              NR Nursing Quiz & Notes
             </Typography>
           </Box>
 
