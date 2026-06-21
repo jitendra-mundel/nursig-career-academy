@@ -3,18 +3,20 @@ Email provider setup and test
 This file explains how to configure SMTP for OTP email sending and how to test the endpoints.
 
 1) SMTP configuration
-- Use a transactional SMTP provider or a mail account that supports SMTP.
-- For Gmail, enable 2-Step Verification and generate an App Password.
-- For Zoho or another provider, use the SMTP host, port, user, and password provided by that service.
-- In your hosting service, set these environment variables:
-  - SMTP_HOST = smtp.gmail.com or smtp.zoho.in or your provider host
-  - SMTP_PORT = 587 or 465
-  - SMTP_USER = your-email@example.com
-  - SMTP_PASS = your-smtp-password-or-app-password
-  - EMAIL_FROM = your-email@example.com
+- Use a mail account or transactional SMTP provider that supports external SMTP connections.
+- For Zoho Mail, use the Zoho SMTP host and password from your Zoho account.
+- For Zoho, preferred settings are:
+  - SMTP_HOST = smtp.zoho.in
+  - SMTP_PORT = 465
+  - SMTP_SECURE = true
+  - SMTP_USER = info@nrnursingquizandnotes.in
+  - SMTP_PASS = <your-zoho-smtp-password>
+  - EMAIL_FROM = info@nrnursingquizandnotes.in
+- If you use port 587 instead, set `SMTP_SECURE=false` and make sure `SMTP_PASS` is correct.
 
 2) Notes
 - The backend `utils/email.js` now uses SMTP only. SendGrid is removed from the OTP flow.
+- Render may block direct SMTP on some ports; if Zoho SMTP still times out, use a different provider that allows outbound SMTP from Render (for example Mailgun SMTP or another transactional service).
 - Do NOT commit `backend/.env` to Git. Use Render/Netlify environment variables or another secret manager.
 
 3) Test endpoints (after redeploy)

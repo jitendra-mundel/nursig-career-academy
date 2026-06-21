@@ -13,7 +13,9 @@ export const sendOtpEmail = async (to, code) => {
 
   const host = normalize(process.env.SMTP_HOST || process.env.EMAIL_HOST);
   const port = normalize(process.env.SMTP_PORT || process.env.EMAIL_PORT);
-  const useSecure = Number(port) === 465;
+  const secureEnv = normalize(process.env.SMTP_SECURE || process.env.EMAIL_SECURE);
+  const secureOverride = secureEnv === 'true' || secureEnv === '1';
+  const useSecure = secureEnv ? secureOverride : Number(port) === 465;
 
   console.log('📧 SMTP Debug:', { host, port, useSecure, user: !!user, pass: !!pass, from });
 
@@ -34,11 +36,12 @@ export const sendOtpEmail = async (to, code) => {
     port: Number(port),
     secure: useSecure,
     auth: { user, pass },
-    requireTLS: !useSecure,
+    requireTLS: true,
+    ignoreTLS: false,
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
     lookup: (hostname, options, callback) => dns.lookup(hostname, { family: options.family || 0 }, callback),
   });
 
