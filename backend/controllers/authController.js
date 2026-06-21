@@ -73,7 +73,7 @@ export const sendOtp = async (req, res, next) => {
 
       const response = { success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) };
       if (err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNREFUSED')) {
-        response.message = 'SMTP connection failed (timeout or blocked). Your host may not allow direct Gmail SMTP. Verify that SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS are correct, or use a different SMTP provider.';
+        response.message = 'SMTP connection failed (timeout or blocked). Verify that SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS are correct. If Render blocks direct SMTP, use a transactional SMTP provider that allows external connections.';
       }
       return res.status(502).json(response);
     }
