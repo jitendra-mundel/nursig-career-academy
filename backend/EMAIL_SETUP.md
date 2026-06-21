@@ -1,28 +1,46 @@
 Email provider setup and test
 
-This file explains how to configure SendGrid or Gmail SMTP for OTP email sending and how to test the endpoints.
+This file explains how to configure SMTP for OTP email sending and how to test the endpoints.
 
-1) Preferred: SendGrid (recommended for production)
-- Create a SendGrid account and verify a sender email.
-- In SendGrid, create an API Key with "Full Access" or at least Mail Send.
-- In your Render / hosting service, set the following environment variables:
-  - SENDGRID_API_KEY = <your-sendgrid-api-key>
-  - SENDGRID_FROM = your-verified-sender@example.com
-  - EMAIL_FROM = your-verified-sender@example.com
+1) SMTP configuration
+- Use a transactional SMTP provider or a mail account that supports SMTP.
+- For Gmail, enable 2-Step Verification and generate an App Password.
+- For Zoho or another provider, use the SMTP host, port, user, and password provided by that service.
+- In your hosting service, set these environment variables:
+  - SMTP_HOST = smtp.gmail.com or smtp.zoho.in or your provider host
+  - SMTP_PORT = 587 or 465
+  - SMTP_USER = your-email@example.com
+  - SMTP_PASS = your-smtp-password-or-app-password
+  - EMAIL_FROM = your-email@example.com
 
-2) Alternative: Gmail App Password (SMTP)
-- Enable 2-Step Verification for your Gmail account.
-- Generate an App Password (Mail) and copy the 16-char code.
-- In Render, set these environment variables:
-  - SMTP_HOST = smtp.gmail.com
-  - SMTP_PORT = 587
-  - SMTP_USER = your-email@gmail.com
-  - SMTP_PASS = <16-char-app-password-without-spaces>
-  - EMAIL_FROM = your-email@gmail.com
-
-3) Notes
-- The backend `utils/email.js` will try SendGrid first when `SENDGRID_API_KEY` and `SENDGRID_FROM` are set. If SendGrid is not configured, it falls back to SMTP (Gmail or other).
+2) Notes
+- The backend `utils/email.js` now uses SMTP only. SendGrid is removed from the OTP flow.
 - Do NOT commit `backend/.env` to Git. Use Render/Netlify environment variables or another secret manager.
+
+3) Test endpoints (after redeploy)
+- Test email (debug helper):
+
+  curl -X POST https://<your-backend-host>/api/auth/test-email \
+    -H "Content-Type: application/json" \
+    -d '{"to":"you@example.com"}'
+
+- Send OTP (normal flow):
+
+  curl -X POST https://<your-backend-host>/api/auth/send-otp \
+    -H "Content-Type: application/json" \
+    -d '{"email":"you@example.com"}'
+
+Expected responses:
+- `test-email`: { "success": true, "message": "Test email sent (OTP flow)" }
+- `send-otp`: { "success": true, "message": "OTP sent" }
+
+4) Debugging
+- Check backend logs for the startup log line `📧 SMTP Debug:` to confirm environment variables are present.
+- Check logs for `✅ OTP <code> sent to <email>` or `❌ Failed to send OTP email:`.
+
+5) If issues persist
+- Verify the SMTP provider host, port, username, and password are correct.
+- If direct Gmail SMTP is blocked by your host, use another SMTP provider such as Zoho, Mailgun, or a transactional SMTP service.
 
 4) Test endpoints (after redeploy)
 - Test email (debug helper):

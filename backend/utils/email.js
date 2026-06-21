@@ -1,49 +1,26 @@
 import nodemailer from 'nodemailer';
 
-// Send OTP email. Tries SendGrid Web API first if configured, otherwise falls back to SMTP.
+// Send OTP email via SMTP only.
 export const sendOtpEmail = async (to, code) => {
   const normalize = (value) => (typeof value === 'string' ? value.trim() : value);
   const normalizePassword = (value) => (typeof value === 'string' ? value.replace(/\s+/g, '') : value);
 
-  const sendgridKey = normalize(process.env.SENDGRID_API_KEY);
-  const sendgridFrom = normalize(process.env.SENDGRID_FROM);
   const user = normalize(process.env.SMTP_USER || process.env.EMAIL_USER || process.env.EMAIL_FROM);
   const pass = normalizePassword(process.env.SMTP_PASS || process.env.EMAIL_PASSWORD);
-  const from = sendgridFrom || normalize(process.env.EMAIL_FROM) || user || 'no-reply@example.com';
-  const replyTo = normalize(process.env.EMAIL_FROM) || user || undefined;
+  const from = normalize(process.env.EMAIL_FROM) || user || 'no-reply@example.com';
 
-  // Disable SendGrid usage - force SMTP per user request
-  // const useSendGrid = Boolean(sendgridKey && sendgridFrom);
-  const useSendGrid = false;
-  const sendGridMisconfigured = Boolean(sendgridKey && !sendgridFrom);
-  const sendGridHalfConfigured = Boolean(!sendgridKey && sendgridFrom);
+  const host = normalize(process.env.SMTP_HOST || process.env.EMAIL_HOST);
+  const port = normalize(process.env.SMTP_PORT || process.env.EMAIL_PORT);
 
-  if (sendGridMisconfigured) {
-    console.warn('📧 SendGrid misconfigured: SENDGRID_API_KEY is set but SENDGRID_FROM is missing. Falling back to SMTP.');
-  }
-  if (sendGridHalfConfigured) {
-    console.warn('📧 SendGrid misconfigured: SENDGRID_FROM is set but SENDGRID_API_KEY is missing. Falling back to SMTP.');
-  }
-
-  console.log('📧 Email send config:', { useSendGrid, sendgridKey: !!sendgridKey, sendgridFrom, from, replyTo });
+  console.log('📧 SMTP Debug:', { host, port, user: !!user, pass: !!pass, from });
 
   const subject = 'Your verification code';
   const text = `Your verification OTP is: ${code}. It will expire in 5 minutes.`;
   const html = `<p>Your verification OTP is: <strong>${code}</strong></p><p>It will expire in 5 minutes.</p>`;
 
-  // SendGrid path intentionally disabled. SMTP will be used below.
-  // If you want to re-enable SendGrid in future, remove the `useSendGrid = false` line above
-  // and restore the SendGrid send block.
-
-  // --- SMTP fallback (keeps previous logic) ---
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-  const port = process.env.SMTP_PORT || process.env.EMAIL_PORT;
-
-  console.log('📧 SMTP Debug:', { host: !!host, port: !!port, user: !!user, pass: !!pass, from });
-
   if (!host || !port || !user || !pass) {
     console.error('❌ SMTP Config Missing:', { host, port, user, pass });
-    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS or EMAIL_USER and EMAIL_PASSWORD in backend/.env or set SENDGRID_API_KEY');
+    const error = new Error('SMTP not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS or EMAIL_USER and EMAIL_PASSWORD in backend/.env.');
     error.statusCode = 503;
     error.code = 'SMTP_NOT_CONFIGURED';
     throw error;
@@ -58,7 +35,6 @@ export const sendOtpEmail = async (to, code) => {
 
   const useSecure = Number(port) === 465;
   const transporter = nodemailer.createTransport({
-    service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
     host,
     port: Number(port),
     secure: useSecure,
@@ -81,7 +57,4 @@ export const sendOtpEmail = async (to, code) => {
     console.error('📧 SMTP send failed:', err.code || err.message || err.toString());
     throw err;
   }
-
-  console.error('📧 All SMTP attempts failed', lastError && (lastError.code || lastError.message));
-  throw lastError || new Error('SMTP send failed');
 };

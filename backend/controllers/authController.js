@@ -59,29 +59,29 @@ export const sendOtp = async (req, res, next) => {
 
     await Otp.create({ email, code, expiresAt });
 
-    // send email (tries SendGrid first if configured, falls back to SMTP)
+    // send email using SMTP only
     try {
       await sendOtpEmail(email, code);
       console.log(`✅ OTP ${code} sent to ${email}`);
-      return res.status(200).json({ success: true, message: 'OTP sent' });
+      return res.status(200).json({ success: true, message: 'OTP sent successfully to your email' });
     } catch (err) {
       console.error('❌ Failed to send OTP email:', err && (err.code || err.message || err.toString()));
       // Respond with safe error info for debugging (do not expose secrets)
-      if (err.code === 'SMTP_NOT_CONFIGURED' || err.code === 'SENDGRID_CONFIG_MISSING' || err.statusCode === 503) {
-        return res.status(503).json({ success: false, message: err.message || 'Email OTP is not configured yet. Set SENDGRID_API_KEY and SENDGRID_FROM or SMTP settings.' });
+      if (err.code === 'SMTP_NOT_CONFIGURED' || err.statusCode === 503) {
+        return res.status(503).json({ success: false, message: err.message || 'Email OTP is not configured yet. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS.' });
       }
 
       const response = { success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) };
       if (err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNREFUSED')) {
-        response.message = 'SMTP connection failed (timeout or blocked). Your host may not allow direct Gmail SMTP. Use SendGrid or another transactional email provider, or verify that SMTP_PORT and SMTP_PASS are correct.';
+        response.message = 'SMTP connection failed (timeout or blocked). Your host may not allow direct Gmail SMTP. Verify that SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS are correct, or use a different SMTP provider.';
       }
       return res.status(502).json(response);
     }
   } catch (error) {
-    if (error.code === 'SMTP_NOT_CONFIGURED' || error.code === 'SENDGRID_CONFIG_MISSING' || error.statusCode === 503) {
+    if (error.code === 'SMTP_NOT_CONFIGURED' || error.statusCode === 503) {
       return res.status(503).json({
         success: false,
-        message: error.message || 'Email OTP is not configured yet. Set SENDGRID_API_KEY and SENDGRID_FROM or SMTP settings.',
+        message: error.message || 'Email OTP is not configured yet. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS.',
       });
     }
     next(error);
@@ -98,12 +98,12 @@ export const testEmail = async (req, res, next) => {
     const { to, subject, text } = req.body;
     if (!to) return res.status(400).json({ success: false, message: 'Recipient `to` is required' });
 
-    // Use the sendOtpEmail helper with a temporary code (re-uses SendGrid/SMTP logic)
+    // Use the sendOtpEmail helper with a temporary code (SMTP only)
     const fakeCode = '00000';
     const msgSubject = subject || 'Test email from backend';
     const msgText = text || `This is a test email. Code: ${fakeCode}`;
 
-    // Try SendGrid path explicitly if configured
+    // Send via SMTP only
     const { sendOtpEmail: send } = await import('../utils/email.js');
     try {
       // sendOtpEmail expects (to, code) — we'll call and ignore the code in the template
