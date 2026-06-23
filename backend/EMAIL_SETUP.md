@@ -13,10 +13,22 @@ This file explains how to configure SMTP for OTP email sending and how to test t
   - SMTP_PASS = <your-zoho-smtp-password>
   - EMAIL_FROM = info@nrnursingquizandnotes.in
 - If you use port 587 instead, set `SMTP_SECURE=false` and make sure `SMTP_PASS` is correct.
+- If Render still times out, use Mailgun SMTP instead.
 
-2) Notes
-- The backend `utils/email.js` now uses SMTP only. SendGrid is removed from the OTP flow.
-- Render may block direct SMTP on some ports; if Zoho SMTP still times out, use a different provider that allows outbound SMTP from Render (for example Mailgun SMTP or another transactional service).
+2) Mailgun SMTP (preferred on Render if direct SMTP fails)
+- Create a Mailgun account and get SMTP credentials.
+- In Render, set these environment variables instead of Zoho:
+  - MAILGUN_SMTP_HOST = smtp.mailgun.org
+  - MAILGUN_SMTP_PORT = 587
+  - MAILGUN_SMTP_SECURE = false
+  - MAILGUN_SMTP_USER = postmaster@YOUR_DOMAIN
+  - MAILGUN_SMTP_PASS = <your-mailgun-smtp-password>
+  - EMAIL_FROM = your-email@YOUR_DOMAIN
+
+3) Notes
+- The backend `utils/email.js` now supports Mailgun SMTP via `MAILGUN_SMTP_*` env vars.
+- If Mailgun SMTP is configured, it takes priority over the generic SMTP env vars.
+- Do NOT commit `backend/.env` to Git. Use Render/Netlify environment variables or another secret manager.
 - Do NOT commit `backend/.env` to Git. Use Render/Netlify environment variables or another secret manager.
 
 3) Test endpoints (after redeploy)

@@ -73,7 +73,7 @@ export const sendOtp = async (req, res, next) => {
 
       const response = { success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) };
       if (err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNREFUSED')) {
-        response.message = 'SMTP connection failed (timeout or blocked). Verify SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_SECURE. If Render blocks direct SMTP, use a transactional SMTP provider that allows external connections.';
+        response.message = 'SMTP connection failed (timeout or blocked). Verify your SMTP provider details. If Render blocks direct SMTP, use Mailgun SMTP or another transactional provider that allows external connections.';
       }
       return res.status(502).json(response);
     }
