@@ -23,10 +23,10 @@ dotenv.config();
 
 const logEnvConfig = () => {
   console.log('🔧 Backend env config:', {
-    SMTP_HOST: !!process.env.SMTP_HOST,
-    SMTP_PORT: !!process.env.SMTP_PORT,
-    SMTP_USER: !!process.env.SMTP_USER,
-    SMTP_PASS: !!process.env.SMTP_PASS,
+    BREVO_API_KEY: !!process.env.BREVO_API_KEY,
+    BREVO_SENDER: !!process.env.BREVO_SENDER,
+    MAILGUN_API_KEY: !!process.env.MAILGUN_API_KEY,
+    MAILGUN_DOMAIN: !!process.env.MAILGUN_DOMAIN,
     EMAIL_FROM: !!process.env.EMAIL_FROM,
     API_URL: process.env.API_URL || null,
     CORS_ORIGIN: process.env.CORS_ORIGIN || null,

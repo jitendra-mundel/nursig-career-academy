@@ -59,21 +59,22 @@ export const sendOtp = async (req, res, next) => {
 
     await Otp.create({ email, code, expiresAt });
 
-    // send email using SMTP only
     try {
       await sendOtpEmail(email, code);
       console.log(`✅ OTP ${code} sent to ${email}`);
       return res.status(200).json({ success: true, message: 'OTP sent successfully to your email' });
     } catch (err) {
       console.error('❌ Failed to send OTP email:', err && (err.code || err.message || err.toString()));
-      // Respond with safe error info for debugging (do not expose secrets)
-      if (err.code === 'SMTP_NOT_CONFIGURED' || err.statusCode === 503) {
-        return res.status(503).json({ success: false, message: err.message || 'Email OTP is not configured yet. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS.' });
+      if (err.code === 'EMAIL_PROVIDER_NOT_CONFIGURED' || err.statusCode === 503) {
+        return res.status(503).json({
+          success: false,
+          message: err.message || 'Email OTP is not configured yet. Set BREVO_API_KEY and BREVO_SENDER, or MAILGUN_API_KEY and MAILGUN_DOMAIN.',
+        });
       }
 
       const response = { success: false, message: 'Failed to send OTP email', detail: err && (err.code || err.message) };
       if (err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNREFUSED')) {
-        response.message = 'SMTP connection failed (timeout or blocked). Verify your SMTP provider details. If Render blocks direct SMTP, use Mailgun SMTP or another transactional provider that allows external connections.';
+        response.message = 'Email provider connection failed (timeout or blocked). Use Brevo API or Mailgun REST API instead of direct SMTP on Render.';
       }
       return res.status(502).json(response);
     }
@@ -98,15 +99,14 @@ export const testEmail = async (req, res, next) => {
     const { to, subject, text } = req.body;
     if (!to) return res.status(400).json({ success: false, message: 'Recipient `to` is required' });
 
-    // Use the sendOtpEmail helper with a temporary code (SMTP only)
+    // Use the sendOtpEmail helper with a temporary code
     const fakeCode = '00000';
     const msgSubject = subject || 'Test email from backend';
     const msgText = text || `This is a test email. Code: ${fakeCode}`;
 
-    // Send via SMTP only
     const { sendOtpEmail: send } = await import('../utils/email.js');
     try {
-      // sendOtpEmail expects (to, code) — we'll call and ignore the code in the template
+      // sendOtpEmail expects (to, code) — use a temporary code for the test email
       await send(to, fakeCode);
       return res.status(200).json({ success: true, message: 'Test email sent (OTP flow)' });
     } catch (err) {
